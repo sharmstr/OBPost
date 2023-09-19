@@ -574,26 +574,6 @@ function writeHeader(secID)
       writeComment("Program Comments : " + programComment);
       }
    writeln("");
-   numberOfSections = getNumberOfSections();
-   if (properties.generateMultiple && filesToGenerate > 1)
-      {
-      writeComment(numberOfSections + " Operation" + ((numberOfSections == 1) ? "" : "s") + " in " + filesToGenerate + " files.");
-      writeComment("File List:");
-      //writeComment("  " +  FileSystem.getFilename(getOutputPath()));
-      for (var i = 0; i < filesToGenerate; ++i)
-         {
-         filename = makeFileName(i + 1);
-         writeComment("  " + filename);
-         }
-      writeln("");
-      writeComment("This is file: " + sequenceNumber + " of " + filesToGenerate);
-      writeln("");
-      writeComment("This file contains the following operations: ");
-      }
-   else
-      {
-      writeComment(numberOfSections + " Operation" + ((numberOfSections == 1) ? "" : "s") + " :");
-      }
 
    for (var i = secID; i < numberOfSections; ++i)
       {
@@ -653,6 +633,10 @@ function writeHeader(secID)
             {
             writeln("");
             writeComment("Remaining operations located in additional files.");
+            // Instead of listing out files, we refer to the file list
+            writeComment("List of files is in: ");
+            writeComment(getOutputPath());
+            writeln("");
             break;
             }
          }
@@ -706,10 +690,6 @@ function onOpen()
       {
       var sectioni = getSection(i);
       var tooli = sectioni.getTool();
-      if (i < (getNumberOfSections() - 1) && (tooli.number != getSection(i + 1).getTool().number))
-         {
-         filesToGenerate++;
-         }
       for (var j = i + 1; j < getNumberOfSections(); ++j)
          {
          var sectionj = getSection(j);
@@ -873,6 +853,12 @@ function onSection()
    //TODO : plasma check that top height mode is from stock top and the value is positive
    //(onParameter =operation:topHeight mode= from stock top)
    //(onParameter =operation:topHeight value= 0.8)
+
+   // moved filesToGenerate increment from onOpen to here.  Fixes issue with split lines and multipletools.
+   if (!isFirstSection() && properties.generateMultiple && nmbrOfSections > 1)
+    {
+    filesToGenerate++;
+    }
 
    var splitHere = !isFirstSection() && properties.generateMultiple && (tool.number != getPreviousSection().getTool().number);
    // to split on linecount, we need to force it here
@@ -1646,6 +1632,20 @@ function onTerminate()
          file.writeln(fname);
          }
       file.close();
+
+      // Rename files to account for new split lines code - sharmstr   
+      fn = removeSpacesInFilename(programFilename);  
+      fullname = outputFolder + "//" + fn;
+      for (var i = 2; i < filesToGenerate; ++i)
+         {
+          // check to make sure the X in ofX of the file name is equal to filesToGenerate.          
+          checkFileName = FileSystem.replaceExtension(fullname, fileIndexFormat.format(i) + "of" + i + "." + extension);          
+          
+          if (FileSystem.isFile(checkFileName)) {            
+            newFileName = FileSystem.replaceExtension(fullname, fileIndexFormat.format(i) + "of" + filesToGenerate + "." + extension);
+            FileSystem.moveFile(checkFileName, newFileName);
+          }
+         }
       }
    }
 
@@ -1827,10 +1827,16 @@ function makeFileName(index)
    debug("makefilename " + index)   
    var fullname = getOutputPath();
    debug("   fullname " + fullname);
-   fullname = fullname.replace(' ', '_');
+   fn = removeSpacesInFilename(FileSystem.getFilename(getOutputPath()))
+   fullname = FileSystem.getFolderPath(fullname) + "\\" + fn;
    var filenamePath = FileSystem.replaceExtension(fullname, fileIndexFormat.format(index) + "of" + filesToGenerate + "." + extension);
    var filename = FileSystem.getFilename(filenamePath);
    debug("   filename " + filename);
    return filenamePath;
    }
+
+function removeSpacesInFilename(fn) {
+  fn = fn.replace( /[\s]+/g, "_");
+  return fn;
+}
 

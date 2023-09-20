@@ -855,7 +855,7 @@ function onSection()
    //(onParameter =operation:topHeight value= 0.8)
 
    // moved filesToGenerate increment from onOpen to here.  Fixes issue with split lines and multipletools.
-   if (!isFirstSection() && properties.generateMultiple && nmbrOfSections > 1)
+   if (!isFirstSection() && properties.generateMultiple && nmbrOfSections > 1 && forceSplit == false)
     {
     filesToGenerate++;
     }
